@@ -4,7 +4,7 @@
 
 asmlinkage long sys_processInfo(int* procs, int* fds, int* sigpends);
 
-int bitmaskSum(int bitmask);
+unsigned long bitmaskSum(unsigned long bitmask);
 
 
 #endif /* _LINUX_PROCESSINFO_H */
