@@ -255,3 +255,6 @@ cond_syscall(sys_membarrier);
 cond_syscall(sys_pkey_mprotect);
 cond_syscall(sys_pkey_alloc);
 cond_syscall(sys_pkey_free);
+
+cond_syscall(sys_helloworld);
+cond_syscall(sys_processInfo);

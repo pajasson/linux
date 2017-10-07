@@ -1244,7 +1244,6 @@ sg_mmap(struct file *filp, struct vm_area_struct *vma)
 	unsigned long req_sz, len, sa;
 	Sg_scatter_hold *rsv_schp;
 	int k, length;
-	int ret = 0;
 
 	if ((!filp) || (!vma) || (!(sfp = (Sg_fd *) filp->private_data)))
 		return -ENXIO;
@@ -1255,11 +1254,8 @@ sg_mmap(struct file *filp, struct vm_area_struct *vma)
 	if (vma->vm_pgoff)
 		return -EINVAL;	/* want no offset */
 	rsv_schp = &sfp->reserve;
-	mutex_lock(&sfp->f_mutex);
-	if (req_sz > rsv_schp->bufflen) {
-		ret = -ENOMEM;	/* cannot map more than reserved buffer */
-		goto out;
-	}
+	if (req_sz > rsv_schp->bufflen)
+		return -ENOMEM;	/* cannot map more than reserved buffer */
 
 	sa = vma->vm_start;
 	length = 1 << (PAGE_SHIFT + rsv_schp->page_order);
@@ -1273,9 +1269,7 @@ sg_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 	vma->vm_private_data = sfp;
 	vma->vm_ops = &sg_mmap_vm_ops;
-out:
-	mutex_unlock(&sfp->f_mutex);
-	return ret;
+	return 0;
 }
 
 static void
@@ -1747,12 +1741,9 @@ sg_start_req(Sg_request *srp, unsigned char *cmd)
 		    !sfp->res_in_use) {
 			sfp->res_in_use = 1;
 			sg_link_reserve(sfp, srp, dxfer_len);
-		} else if (hp->flags & SG_FLAG_MMAP_IO) {
-			res = -EBUSY; /* sfp->res_in_use == 1 */
-			if (dxfer_len > rsv_schp->bufflen)
-				res = -ENOMEM;
+		} else if ((hp->flags & SG_FLAG_MMAP_IO) && sfp->res_in_use) {
 			mutex_unlock(&sfp->f_mutex);
-			return res;
+			return -EBUSY;
 		} else {
 			res = sg_build_indirect(req_schp, sfp, dxfer_len);
 			if (res) {
