@@ -6,33 +6,34 @@
 #include <linux/processInfo.h>
 #include <linux/signal.h>
 
-SYSCALL_DEFINE3(processInfo, int*, procs, int*, fds, int*, sigpends) {
+asmlinkage long sys_processInfo(int* proc, int* sigs, long int* fd){
 
 
-    //uid_t uid = getuid_call();
-    struct user_struct *user = find_user(get_current_user()->uid);
+	struct user_struct *user = find_user(get_current_user()->uid);
 
-    put_user(user->processes.counter, procs);//fd
-    put_user(user->epoll_watches.counter, fds);
-    put_user(user->sigpending.counter, sigpends);
-	
-    printk("\nThe current user has:\n%d processes running\n%d filedescriptors watched\n%d signals pendning\n\n", processes, fd, pending);
+    int process, signal;
+    long int filedesc;
 
-    printk("According to user struct the count is:\n%d processes\n%d filedescriptors watched\n%d signals pending", user->processes.counter, user->epoll_watches.counter, user->sigpending.counter);
+    filedesc = atomic_long_read(&user->epoll_watches);
+    signal = atomic_read(&user->sigpending);
+    process = atomic_read(&user->processes);
+
+    if(copy_to_user(proc, &process, sizeof(atomic_t))){
+        	printk("\ncopying processes to user...");
+        	return -1;
+    }
+    if(copy_to_user(fd, &filedesc, sizeof(atomic_long_t))){
+    	printk("\ncopying filedescriptor to user...");
+    	return -1;
+    }
+    if(copy_to_user(sigs, &signal, sizeof(atomic_t))){
+    	printk("\ncopying pending signals to user...");
+    	return -1;
+    }
+
+
+    printk("\nProcess information on current user is:\n%d processes\n%ld filedescriptors watched\n%d signals pending", process, filedesc, signal);
     free_uid(user);
-  return 0;
+
+    return 0;
 }
-
-unsigned long bitmaskSum(unsigned long bitmask){
-	int sum = 0;
-
-	while (bitmask > 0) {
-		if ((bitmask & 1) == 1)
-			sum++;
-		bitmask >>= 1;
-	}
-
-	return sum;
-}
-
-

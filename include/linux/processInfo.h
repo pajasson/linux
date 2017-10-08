@@ -2,9 +2,7 @@
 #define _LINUX_PROCESSINFO_H
 
 
-asmlinkage long sys_processInfo(int* procs, int* fds, int* sigpends);
-
-unsigned long bitmaskSum(unsigned long bitmask);
+asmlinkage long sys_processInfo(int* proc, int* sigs, long int* fd);
 
 
 #endif /* _LINUX_PROCESSINFO_H */
